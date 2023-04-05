@@ -13,7 +13,7 @@ now, and what is not.
  - [ ] Serve static content
  - [ ] Run CGI scripts
  - [ ] Multiplex requests to upstreams based on SNI (supports client certificates)
- - [ ] Multiplex requests to upstreams based on URL path (does not support client certificates)
+ - [x] Multiplex requests to upstreams based on URL path (does not support client certificates)
  - [ ] Spartan (plain text) upstream
  - [ ] Prefix routes
  - [ ] Regex rules
