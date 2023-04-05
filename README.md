@@ -35,8 +35,8 @@ Gemplex uses a json formatted configuration file. Here's an example:
         },
         {
             "hostname": "culture.example.org",
-            "upstream", "culture",
-        }
+            "upstream": "culture"
+        },
         {
             "prefix": "gemini://example.com/foo/",
             "upstream": "foo"
@@ -122,7 +122,7 @@ The `certs` key contains a list of certificates to be used by Gemplex when
 terminating tls. This is only needed if you use path-based routes. The following
 values can be used in certificate objects:
 
- - `host`: The hostname to use the certificate for. This can be a single
+ - `hostname`: The hostname to use the certificate for. This can be a single
    hostname like `example.com`, or it can be a wildcard like `*.example.com`.
    Notice that only a single wildcard at the beginning is supported, and it must
    be followed by a `.`.
