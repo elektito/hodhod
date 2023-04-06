@@ -1,25 +1,27 @@
 # Gemplex
 
-Gemplex is a Gemini server, capable of multiplexing connections to multiple
-upstream servers, whether based on hostname or path, and also serving static
-content or running CGI scripts on its own.
+Gemplex is a Gemini server, capable of serving multiple capsules. Apart from
+static content, it also supports serving dynamic content through CGI scripts.
+
+Gemplex is in pre-pre-alpha stage, meaning it hasn't been written at the time of
+this writing. Development is going to start real soon now, hopefully! Check the
+"Completion Status" section to find out more.
 
 ## Completion Status
 
-This is a speculative readme at this point. Not everything I write here about is
-actually implemented. Here's a task list to give an idea of what is implemented
-now, and what is not.
+The following features are planned for Gemplex.
 
  - [ ] Serve static content
- - [ ] Run CGI scripts
- - [ ] Multiplex requests to upstreams based on SNI (supports client certificates)
- - [x] Multiplex requests to upstreams based on URL path (does not support client certificates)
- - [ ] Spartan (plain text) upstream
+ - [ ] Serve dynamic content through CGI
+ - [ ] Serving multiple capsules using SNI
  - [ ] Prefix routes
- - [ ] Regex rules
  - [ ] URL routes
- - [ ] Catch-all routes
- - [ ] Upstreams using UNIX sockets
+ - [ ] Write a more complete documentation available on Gemini
+ 
+And maybe later:
+
+ - [ ] Regex routes
+ - [ ] Longest match pattern matching
  
 ## Config File
 
@@ -28,99 +30,68 @@ Gemplex uses a json formatted configuration file. Here's an example:
 ``` json
 {
     "listen": "0.0.0.0:1965",
-    "routes": [
+
+    "capsules": [
         {
-            "hostname": "gardening.example.org",
-            "upstream": "gardener"
+            "prefix": "gemini://example.org/blog/",
+            "type": "static",
+            "location": "/srv/gemini/gemlog/",
+            "strip_file_ext": true
         },
         {
-            "hostname": "culture.example.org",
-            "upstream": "culture"
-        },
+            "url": "gemini://example.com/search",
+            "type": "cgi",
+            "script": "/var/cgi/search.cgi"
+        },**
         {
-            "prefix": "gemini://example.com/foo/",
-            "upstream": "foo"
-        },
-        {
-            "url": "gemini://example.com/bar/",
-            "upstream": "bar"
-        },
-        {
-            "catch_all": true,
-            "upstream": "default"
+            "prefix": "gemini://example.org",
+            "type": "static",
+            "location": "/srv/gemini/example.org/",
+            "strip_file_ext": true
         }
     ],
-    "upstreams": [
-        {
-            "name": "gardner",
-            "addr": "localhost:19650"
-        },
-        {
-            "name": "foo",
-            "addr": "/var/run/foo/gemini.sock",
-            "tls": false
-        },
-        {
-            "name": "bar",
-            "location": "/srv/gem/"
-        },
-        {
-            "name": "default",
-            "cgi": "/srv/cgi-bin/gemini.cgi"
-        }
-    ],
+
     "certs": [
         {
-            "host": "*.example.com",
+            "host": "example.org",
             "cert": "/etc/certs/example.com.cer",
             "key": "/etc/certs/example.com.key"
         },
         {
-            "host": "gardening.example.org",
-            "cert": "/etc/certs/gardening.example.org.cer",
-            "key": "/etc/certs/gardening.example.org.key"
+            "host": "*.example.org",
+            "cert": "/etc/certs/star.example.org.cer",
+            "key": "/etc/certs/star.example.org.key"
         }
     ]
 }
 ```
 
-### Routes
+### "capsules" Section
 
-Routes with a "hostname" use sni if the upstream supports it. You won't need to
-provide a certificate for these. If the upstream does not support tls (that is,
-it uses the spartan protocol), then Gemplex will terminate tls, and it would
-then need to have a certificate provided for the hostname.
+Each item under the capsules section defines either a separate capsule or a part
+of it. The following keys can be used in each item:
 
-Route objects can have the following fields:
-
- - `hostname`
- - `prefix`
- - `regex`
- - `url`
- - `catch_all`
- - `upstream`
-
-"upstream" is mandatory for all routes. One, and only one, of the other fields
-must be used for each routes.
-
-### Upstreams
-
-An upstream object can have the following fields:
-
- - `name`
- - `addr`: Either a "hostname", a "hostname:port" pair, or a path to a UNIX
-   socket (which must start with a `/`). If no port is specified, it defaults to
-   `1965`.
- - `location`: A directory from which files are served.
- - `cgi`: Path to a GCI script.
- - `tls`: A boolean value which defaults to `true`. If false, Gemplex talks to
-   upstreams in plain text.
+ - `prefix`: The url prefix to match. The gemini:// scheme can optionally be
+   dropped.
+ - `regex`: A regular expression. The supported syntax is Go's. The gemini://
+   scheme should not be included.
+ - `url`: The full url to match, excluding query parameters. The gemini://
+   scheme can optionally be dropped.
+ - `hostname`: The hostname to match.
+ - `type`: The type of content to serve. Can be either `static` or `cgi`.
+ - `location`: The location to serve static content from.
+ - `script`: The path to the CGI script.
+ - `strip_file_ext`: If set to true, the `.gmi` extension is stripped from
+   static filenames, when serving, so `/page.gmi` is accessed at `/page`. (This
+   option can also be set globally.)
+ 
+ When matching urls against patterns, a trailing slash is always added if not
+ present, so that `/page/` and `/page` can be treated the same.
 
 ### Certificates
 
 The `certs` key contains a list of certificates to be used by Gemplex when
-terminating tls. This is only needed if you use path-based routes. The following
-values can be used in certificate objects:
+terminating tls.
 
  - `hostname`: The hostname to use the certificate for. This can be a single
    hostname like `example.com`, or it can be a wildcard like `*.example.com`.
