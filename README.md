@@ -18,6 +18,7 @@ The following features are planned for Gemplex.
  - [ ] URL routes
  - [ ] Write a more complete documentation available on Gemini
  - [ ] Client certificates
+ - [ ] Redirects
  
 And maybe later:
 
