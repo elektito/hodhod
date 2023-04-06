@@ -1,4 +1,4 @@
-# Gemplex
+# About Gemplex
 
 Gemplex is a Gemini server, capable of serving multiple capsules. Apart from
 static content, it also supports serving dynamic content through CGI scripts.
@@ -7,7 +7,7 @@ Gemplex is in pre-pre-alpha stage, meaning it hasn't been written at the time of
 this writing. Development is going to start real soon now, hopefully! Check the
 "Completion Status" section to find out more.
 
-## Completion Status
+# Completion Status
 
 The following features are planned for Gemplex.
 
@@ -24,7 +24,7 @@ And maybe later:
  - [ ] Regex routes
  - [ ] Longest match pattern matching
  
-## Config File
+# Config File
 
 Gemplex uses a json formatted configuration file. Here's an example:
 
@@ -35,17 +35,32 @@ Gemplex uses a json formatted configuration file. Here's an example:
     "routes": [
         {
             "prefix": "gemini://example.org/blog/",
+            "backend": "gemlog"
+        },
+        {
+            "url": "gemini://example.com/search",
+            "backend": "search"
+        },
+        {
+            "prefix": "gemini://example.org",
+            "backend": "home"
+        }
+    ],
+    
+    "backends": [
+        {
+            "name": "gemlog",
             "type": "static",
             "location": "/srv/gemini/gemlog/",
             "strip_file_ext": true
         },
         {
-            "url": "gemini://example.com/search",
+            "name": "search",
             "type": "cgi",
             "script": "/var/cgi/search.cgi"
-        },**
+        },
         {
-            "prefix": "gemini://example.org",
+            "name": "home",
             "type": "static",
             "location": "/srv/gemini/example.org/",
             "strip_file_ext": true
@@ -65,35 +80,65 @@ Gemplex uses a json formatted configuration file. Here's an example:
 }
 ```
 
-### Routes
+## Routes
 
-Each item in the routes list defines either a separate capsule or a part of one.
-Gemplex goes through this list one by one and look for a match. It is important
-then, that longer/more specific rules are put higher up in the list.
+Routes are patterns that match urls to backends. Each route must have a
+`backend` key specifying the name of the backend config, as well as a pattern
+that can be specified by one of the following keys:
 
-The following keys can be used in each item:
-
- - `prefix`: The url prefix to match. The gemini:// scheme can optionally be
-   dropped.
- - `regex`: A regular expression. The supported syntax is Go's. The gemini://
-   scheme should not be included.
- - `url`: The full url to match, excluding query parameters. The gemini://
-   scheme can optionally be dropped.
+ - `prefix`: The url prefix to match. Including the `gemini://` scheme is not
+   mandatory.
+ - `url`: The full url to match. Including the `gemini://` scheme is not
+   mandatory.
  - `hostname`: The hostname to match.
- - `type`: The type of content to serve. Can be either `static` or `cgi`.
- - `location`: The location to serve static content from.
- - `script`: The path to the CGI script.
- - `strip_file_ext`: If set to true, the `.gmi` extension is stripped from
-   static filenames, when serving, so `/page.gmi` is accessed at `/page`. (This
-   option can also be set globally.)
+   
+Query parameters are normally ignored when matching. If you want to change this
+behavior, you can set the optional `query_params` field to one of these values:
+
+ - `remove`: The default behavior. The query part of the URL is removed before
+   pattern matching.
+ - `include`: The query part of the URL is included when pattern matching. 
  
- When matching urls against patterns, a trailing slash is always added if not
- present, so that `/page/` and `/page` can be treated the same.
+When matching urls against patterns, a trailing slash is by default added if not
+present, so that `/page/` and `/page` can be treated the same. If you don't want
+this behavior, you can use the optional `trailing_slash` field. The following
+values are allowed for this field:
 
-### Certificates
+ - `ensure`: The default behavior. The trailing slash is added to all request
+   URLs that don't have one, before pattern matching.
+ - `remove`: The trailing slash, if present, is always removed from the request
+   URL before pattern matching.
+ - `ifpresent`: Gemplex will not add or remove trailing slashes. The trailing slash
+   will be part of the URL when matching for patterns.
 
-The `certs` key contains a list of certificates to be used by Gemplex when
-terminating tls.
+## Backends
+
+Each backend specifies a source of gemini pages. The following fields are
+mandatory for all backends:
+
+ - `name`: The name by which we refer to this backend in the routes.
+ - `type`: The type of the backend. Can be either `static` or `cgi`.
+ 
+Each backend type has its own set of other fields that can specify its behavior.
+
+For `static` backends, the following fields are available:
+
+ - `location`: Mandatory. The location to serve static content from. Must point
+   to a valid directory.
+ - `file_ext`: Optional. Can be set to `strip` or `include`. If set to `strip`
+   (the default behavior), `/page.gmi` can be accessed as `/page`. If set to
+   `include`, the filename in the request path must be the same as the filename
+   on the file system.
+
+For `cgi` backends, the following fields are available:
+
+ - `script`: The path to the CGI script.
+
+## Certificates
+
+The `certs` key contains a list of certificates to be used by Gemplex. The
+appropriate certificate will be chosen and served based on the request SNI
+value.
 
  - `cert`: The certificate file.
  - `key`: The certificate key file.
