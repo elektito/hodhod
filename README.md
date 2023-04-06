@@ -17,6 +17,7 @@ The following features are planned for Gemplex.
  - [ ] Prefix routes
  - [ ] URL routes
  - [ ] Write a more complete documentation available on Gemini
+ - [ ] Client certificates
  
 And maybe later:
 
@@ -31,7 +32,7 @@ Gemplex uses a json formatted configuration file. Here's an example:
 {
     "listen": "0.0.0.0:1965",
 
-    "capsules": [
+    "routes": [
         {
             "prefix": "gemini://example.org/blog/",
             "type": "static",
@@ -53,12 +54,10 @@ Gemplex uses a json formatted configuration file. Here's an example:
 
     "certs": [
         {
-            "host": "example.org",
             "cert": "/etc/certs/example.com.cer",
             "key": "/etc/certs/example.com.key"
         },
         {
-            "host": "*.example.org",
             "cert": "/etc/certs/star.example.org.cer",
             "key": "/etc/certs/star.example.org.key"
         }
@@ -66,10 +65,13 @@ Gemplex uses a json formatted configuration file. Here's an example:
 }
 ```
 
-### "capsules" Section
+### Routes
 
-Each item under the capsules section defines either a separate capsule or a part
-of it. The following keys can be used in each item:
+Each item in the routes list defines either a separate capsule or a part of one.
+Gemplex goes through this list one by one and look for a match. It is important
+then, that longer/more specific rules are put higher up in the list.
+
+The following keys can be used in each item:
 
  - `prefix`: The url prefix to match. The gemini:// scheme can optionally be
    dropped.
@@ -93,9 +95,5 @@ of it. The following keys can be used in each item:
 The `certs` key contains a list of certificates to be used by Gemplex when
 terminating tls.
 
- - `hostname`: The hostname to use the certificate for. This can be a single
-   hostname like `example.com`, or it can be a wildcard like `*.example.com`.
-   Notice that only a single wildcard at the beginning is supported, and it must
-   be followed by a `.`.
  - `cert`: The certificate file.
  - `key`: The certificate key file.
