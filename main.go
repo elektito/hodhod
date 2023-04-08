@@ -40,7 +40,8 @@ func getResponseForRequest(req string, cfg *config.GemplexConfig) (resp response
 
 	if backend.Type == "static" {
 		filename := path.Join(backend.Location, unmatched)
-		return response.NewFileResp(filename)
+		resp = response.NewFileResp(filename)
+		return
 	}
 
 	return

@@ -3,7 +3,6 @@ package response
 import (
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"os/exec"
 )
@@ -33,20 +32,13 @@ func (resp StaticResponse) WriteStatus(w io.Writer) (err error) {
 	return
 }
 
-func NewFileResp(filename string) (resp Response, err error) {
+func NewFileResp(filename string) (resp Response) {
 	f, err := os.Open(filename)
-	if err == fs.ErrNotExist {
+	if err != nil {
 		resp = StaticResponse{
 			file:       f,
 			statusCode: 51,
 			meta:       "Not Found",
-		}
-		return
-	} else if err != nil {
-		resp = StaticResponse{
-			file:       f,
-			statusCode: 40,
-			meta:       "Error creating response",
 		}
 		return
 	}
