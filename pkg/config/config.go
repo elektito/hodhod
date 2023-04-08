@@ -61,10 +61,9 @@ func Load() (config GemplexConfig, err error) {
 	err = decoder.Decode(&config)
 
 	if err == nil {
+		setDefaultsAndNormalize(&config)
 		err = validateConfig(&config)
 	}
-
-	setDefaultsAndNormalize(&config)
 
 	return
 }
@@ -128,19 +127,19 @@ func (cfg *GemplexConfig) GetBackendByUrl(urlStr string) (backend *Backend, unma
 }
 
 func setDefaultsAndNormalize(cfg *GemplexConfig) {
-	for _, route := range cfg.Routes {
+	for i, route := range cfg.Routes {
 		if route.Prefix != "" && !strings.HasPrefix(route.Prefix, "gemini://") {
-			route.Prefix = "gemini://" + route.Prefix
+			cfg.Routes[i].Prefix = "gemini://" + route.Prefix
 		}
 
 		if route.Url != "" && !strings.HasPrefix(route.Url, "gemini://") {
-			route.Url = "gemini://" + route.Url
+			cfg.Routes[i].Url = "gemini://" + route.Url
 		}
 	}
 
-	for _, backend := range cfg.Backends {
+	for i, backend := range cfg.Backends {
 		if backend.Type == "static" && backend.FileExt == "" {
-			backend.FileExt = "strip"
+			cfg.Backends[i].FileExt = "strip"
 		}
 	}
 }
@@ -194,6 +193,9 @@ func validateConfig(cfg *GemplexConfig) (err error) {
 		case "static":
 			if backend.Location == "" {
 				return fmt.Errorf("Location missing for static backend.")
+			}
+			if backend.FileExt != "strip" && backend.FileExt != "include" {
+				return fmt.Errorf("Invalid value '%s' for file_ext option; valid values are 'strip' and 'include'.", backend.FileExt)
 			}
 		case "cgi":
 			if backend.Script == "" {
