@@ -58,7 +58,7 @@ Gemplex uses a json formatted configuration file. Here's an example:
             "name": "gemlog",
             "type": "static",
             "location": "/srv/gemini/gemlog/",
-            "strip_file_ext": true
+            "file_ext": "strip"
         },
         {
             "name": "search",
@@ -69,7 +69,7 @@ Gemplex uses a json formatted configuration file. Here's an example:
             "name": "home",
             "type": "static",
             "location": "/srv/gemini/example.org/",
-            "strip_file_ext": true
+            "file_ext": "strip"
         }
     ],
 
