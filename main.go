@@ -1,127 +1,101 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"crypto/tls"
-	"fmt"
+	"crypto/x509"
+	"errors"
 	"io"
 	"log"
 	"net"
 	"os"
+	"path"
 	"sync"
 	"time"
 
 	"github.com/elektito/gemplex/pkg/config"
+	"github.com/elektito/gemplex/pkg/response"
 )
 
 const (
 	ConnectionTimeout = 30 * time.Second
+
+	// This is the amount specified by the Gemini spec
+	GeminiMaxRequestSize = 1024
 )
+
+var ErrNotFound = errors.New("No route found for url")
 
 func fail(whileDoing string, err error) {
 	log.Printf("Error %s: %s\n", whileDoing, err)
 	os.Exit(1)
 }
 
-func getUpstreamFromClientHello(hello *tls.ClientHelloInfo, cfg *config.GemplexConfig) (conn net.Conn, err error) {
-	upstream := cfg.GetUpstreamByHostname(hello.ServerName)
-	if upstream == nil {
-		err = fmt.Errorf("No route found for server name: %s", hello.ServerName)
+func getResponseForRequest(req string, cfg *config.GemplexConfig) (resp response.Response, err error) {
+	backend, unmatched := cfg.GetBackendByUrl(req)
+	if backend == nil {
+		err = ErrNotFound
 		return
 	}
 
-	conn, err = net.Dial("tcp", upstream.Addr)
+	if backend.Type == "static" {
+		filename := path.Join(backend.Location, unmatched)
+		return response.NewFileResp(filename)
+	}
+
 	return
 }
 
-// code shamelessly copied from:
-// https://www.agwa.name/blog/post/writing_an_sni_proxy_in_go
-type readOnlyConn struct {
-	reader io.Reader
-}
-
-func (conn readOnlyConn) Read(p []byte) (int, error)         { return conn.reader.Read(p) }
-func (conn readOnlyConn) Write(p []byte) (int, error)        { return 0, io.ErrClosedPipe }
-func (conn readOnlyConn) Close() error                       { return nil }
-func (conn readOnlyConn) LocalAddr() net.Addr                { return nil }
-func (conn readOnlyConn) RemoteAddr() net.Addr               { return nil }
-func (conn readOnlyConn) SetDeadline(t time.Time) error      { return nil }
-func (conn readOnlyConn) SetReadDeadline(t time.Time) error  { return nil }
-func (conn readOnlyConn) SetWriteDeadline(t time.Time) error { return nil }
-
-// code shamelessly copied from:
-// https://www.agwa.name/blog/post/writing_an_sni_proxy_in_go
-func readClientHello(reader io.Reader) (*tls.ClientHelloInfo, error) {
-	var hello *tls.ClientHelloInfo
-
-	err := tls.Server(readOnlyConn{reader: reader}, &tls.Config{
-		GetConfigForClient: func(argHello *tls.ClientHelloInfo) (*tls.Config, error) {
-			hello = new(tls.ClientHelloInfo)
-			*hello = *argHello
-			return nil, nil
-		},
-	}).Handshake()
-
-	if hello == nil {
-		return nil, err
-	}
-
-	return hello, nil
-}
-
-// code shamelessly copied from:
-// https://www.agwa.name/blog/post/writing_an_sni_proxy_in_go
-func peekClientHello(reader io.Reader) (hello *tls.ClientHelloInfo, outReader io.Reader, err error) {
-	peekedBytes := new(bytes.Buffer)
-	hello, err = readClientHello(io.TeeReader(reader, peekedBytes))
-	if err != nil {
-		return
-	}
-
-	//outReader = io.MultiReader(peekedBytes, reader)
-	outReader = peekedBytes
-	return
-}
-
-// code shamelessly copied from:
-// https://www.agwa.name/blog/post/writing_an_sni_proxy_in_go
-func handleConn(clientConn net.Conn, cfg *config.GemplexConfig) {
-	defer clientConn.Close()
+func handleConn(conn net.Conn, cfg *config.GemplexConfig) {
+	defer conn.Close()
 
 	log.Println("Accepted connection.")
 
-	err := clientConn.SetDeadline(time.Now().Add(ConnectionTimeout))
+	err := conn.SetDeadline(time.Now().Add(ConnectionTimeout))
 	if err != nil {
 		log.Println("Error setting connection deadline:", err)
 		return
 	}
 
-	clientHello, clientHelloBytes, err := peekClientHello(clientConn)
-	if err != nil {
-		log.Println("Error reading ClientHello:", err)
+	buf := make([]byte, GeminiMaxRequestSize)
+	s := bufio.NewScanner(conn)
+	s.Buffer(buf, GeminiMaxRequestSize)
+	ok := s.Scan()
+	if !ok {
+		log.Println("Could not read request:", s.Err())
 		return
 	}
 
-	upstreamConn, err := getUpstreamFromClientHello(clientHello, cfg)
+	req := s.Text()
+	resp, err := getResponseForRequest(req, cfg)
 	if err != nil {
-		log.Println("Error getting upstream from ClientHello:", err)
+		log.Println("Could not find response for the request:", err)
 		return
 	}
-	defer upstreamConn.Close()
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go func() {
-		io.Copy(clientConn, upstreamConn)
-		clientConn.(*net.TCPConn).CloseWrite()
+		resp.WriteStatus(conn)
+		io.Copy(conn, resp)
+		conn.(*tls.Conn).NetConn().(*net.TCPConn).CloseWrite()
 		wg.Done()
 	}()
 
 	go func() {
-		io.Copy(upstreamConn, clientHelloBytes)
-		io.Copy(upstreamConn, clientConn)
-		upstreamConn.(*net.TCPConn).CloseWrite()
+		// the client should not send any more bytes; if we receive anything,
+		// that's an error, and we'll close the connection.
+		buf := make([]byte, 1)
+		n, err := conn.Read(buf)
+		if n != 0 {
+			log.Println("Unexpected input from client.")
+			conn.Close()
+		} else if err != nil && err != io.EOF {
+			log.Println("Error reading from client:", err)
+			conn.Close()
+		}
+
 		wg.Done()
 	}()
 
@@ -130,13 +104,45 @@ func handleConn(clientConn net.Conn, cfg *config.GemplexConfig) {
 	log.Println("Closed connection.")
 }
 
+func loadCertificates(cfg *config.GemplexConfig) (certs []tls.Certificate, err error) {
+	certs = make([]tls.Certificate, len(cfg.Certs))
+	for i, c := range cfg.Certs {
+		certs[i], err = tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
+		if err != nil {
+			return
+		}
+
+		// the documentation for the `Certificates` field of `tls.Config` says
+		// that if the optional Leaf field is not set, and there are multiple
+		// certificates, there will be a significant pre-handshake cost (because
+		// the certificate needs to be parsed every time). Here, we parse the
+		// leaf certificate and store it in the Leaf field so that this will not
+		// happen.
+		certs[i].Leaf, err = x509.ParseCertificate(certs[i].Certificate[0])
+		if err != nil {
+			return
+		}
+	}
+
+	return
+}
+
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
 		fail("loading config", err)
 	}
 
-	listener, err := net.Listen("tcp", cfg.ListenAddr)
+	certs, err := loadCertificates(&cfg)
+	if err != nil {
+		fail("loading certificates", err)
+	}
+
+	tlsConfig := &tls.Config{
+		MinVersion:   tls.VersionTLS12,
+		Certificates: certs,
+	}
+	listener, err := tls.Listen("tcp", cfg.ListenAddr, tlsConfig)
 	if err != nil {
 		fail("starting listening", err)
 	}

@@ -33,6 +33,11 @@ Gemplex uses a json formatted configuration file. Here's an example:
 {
     "listen": "0.0.0.0:1965",
 
+    "match_options": {
+        "query_params": "remove",
+        "trailing_slash": "esnure"
+    },
+
     "routes": [
         {
             "prefix": "gemini://example.org/blog/",
@@ -94,23 +99,24 @@ that can be specified by one of the following keys:
  - `hostname`: The hostname to match.
    
 Query parameters are normally ignored when matching. If you want to change this
-behavior, you can set the optional `query_params` field to one of these values:
+behavior, you can set the global `match_options.query_params` field to one of
+these values:
 
  - `remove`: The default behavior. The query part of the URL is removed before
    pattern matching.
- - `include`: The query part of the URL is included when pattern matching. 
+ - `include`: The query part of the URL is included when pattern matching.
  
 When matching urls against patterns, a trailing slash is by default added if not
 present, so that `/page/` and `/page` can be treated the same. If you don't want
-this behavior, you can use the optional `trailing_slash` field. The following
-values are allowed for this field:
+this behavior, you can use the global `match_options.trailing_slash` field. The
+following values are allowed for this field:
 
  - `ensure`: The default behavior. The trailing slash is added to all request
    URLs that don't have one, before pattern matching.
  - `remove`: The trailing slash, if present, is always removed from the request
    URL before pattern matching.
- - `ifpresent`: Gemplex will not add or remove trailing slashes. The trailing slash
-   will be part of the URL when matching for patterns.
+ - `ifpresent`: Gemplex will not add or remove trailing slashes. The trailing
+   slash, if present, will be part of the URL when matching for patterns.
 
 ## Backends
 
