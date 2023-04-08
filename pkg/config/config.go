@@ -33,8 +33,10 @@ type Cert struct {
 }
 
 type MatchOptionsConfig struct {
-	QueryParams   string `json:"query_params"`
-	TrailingSlash string `json:"trailing_slash"`
+	QueryParams   string   `json:"query_params"`
+	TrailingSlash string   `json:"trailing_slash"`
+	DefaultExts   []string `json:"default_exts"`
+	IndexFilename string   `json:"index_filename"`
 }
 
 type GemplexConfig struct {
@@ -56,6 +58,8 @@ func Load() (config GemplexConfig, err error) {
 	config.ListenAddr = "127.0.0.1:1965"
 	config.MatchOptions.QueryParams = "remove"
 	config.MatchOptions.TrailingSlash = "ensure"
+	config.MatchOptions.DefaultExts = []string{"gmi"}
+	config.MatchOptions.IndexFilename = "index.gmi"
 
 	decoder := json.NewDecoder(f)
 	err = decoder.Decode(&config)

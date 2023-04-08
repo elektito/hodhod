@@ -5,6 +5,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
+
+	"github.com/elektito/gemplex/pkg/config"
 )
 
 type Response interface {
@@ -32,8 +35,26 @@ func (resp StaticResponse) WriteStatus(w io.Writer) (err error) {
 	return
 }
 
-func NewFileResp(filename string) (resp Response) {
+func NewFileResp(filename string, cfg *config.GemplexConfig) (resp Response) {
 	f, err := os.Open(filename)
+
+	if err == nil {
+		info, serr := f.Stat()
+		if serr == nil && info.IsDir() {
+			filename = path.Join(filename, cfg.MatchOptions.IndexFilename)
+			f, err = os.Open(filename)
+		}
+	}
+
+	if err != nil {
+		for _, ext := range cfg.MatchOptions.DefaultExts {
+			f, err = os.Open(filename + "." + ext)
+			if err == nil {
+				break
+			}
+		}
+	}
+
 	if err != nil {
 		resp = StaticResponse{
 			file:       f,
