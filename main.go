@@ -109,7 +109,6 @@ func handleConn(conn net.Conn, cfg *gemplex.Config) {
 
 	go func() {
 		defer resp.Close()
-		resp.WriteStatus(conn)
 		_, err := io.Copy(conn, resp)
 		if err != nil {
 			log.Println("Error sending response:", err)
