@@ -8,10 +8,6 @@ import (
 	"strings"
 )
 
-const (
-	ConfigFilePath = "config.json"
-)
-
 type Route struct {
 	Prefix   string `json:"prefix"`
 	Url      string `json:"url"`
@@ -48,8 +44,8 @@ type Config struct {
 	Certs        []Cert             `json:"certs"`
 }
 
-func LoadConfig() (config Config, err error) {
-	f, err := os.Open(ConfigFilePath)
+func LoadConfig(configFilePath string) (config Config, err error) {
+	f, err := os.Open(configFilePath)
 	if err != nil {
 		return
 	}

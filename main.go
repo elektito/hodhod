@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -167,7 +168,10 @@ func loadCertificates(cfg *gemplex.Config) (certs []tls.Certificate, err error) 
 }
 
 func main() {
-	cfg, err := gemplex.LoadConfig()
+	configFile := flag.String("config", "config.json", "Path to config file")
+	flag.Parse()
+
+	cfg, err := gemplex.LoadConfig(*configFile)
 	if err != nil {
 		fail("loading config", err)
 	}
