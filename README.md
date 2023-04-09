@@ -24,6 +24,14 @@ And maybe later:
  - [ ] Regex routes
  - [ ] Longest match pattern matching
  
+# Installation
+
+You can install gemplex by running:
+
+``` sh
+go install github.com/elektito/gemplex@latest
+```
+
 # Config File
 
 Gemplex uses a json formatted configuration file. Here's an example:
