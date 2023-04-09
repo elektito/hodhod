@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-var CgiTimeout = 10 * time.Second
-
 type CgiResponse struct {
 	cmd          *exec.Cmd
 	stdout       io.Reader
@@ -56,7 +54,7 @@ func (resp CgiResponse) Close() {
 }
 
 func NewCgiResp(req Request, scriptPath string, cfg *Config) (resp Response) {
-	ctx, cancelFunc := context.WithTimeout(context.Background(), CgiTimeout)
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(cfg.CgiTimeout)*time.Second)
 	cmd := exec.CommandContext(ctx, scriptPath)
 
 	// create a pipe to connect to the script's stdout; we set the writer as the

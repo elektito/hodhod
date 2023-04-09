@@ -42,6 +42,7 @@ type MatchOptionsConfig struct {
 type Config struct {
 	ListenAddr   string             `json:"listen"`
 	MatchOptions MatchOptionsConfig `json:"match_options"`
+	CgiTimeout   int                `json:"cgi_timeout"`
 	Routes       []Route            `json:"routes"`
 	Backends     []Backend          `json:"backends"`
 	Certs        []Cert             `json:"certs"`
@@ -60,6 +61,7 @@ func LoadConfig() (config Config, err error) {
 	config.MatchOptions.TrailingSlash = "ensure"
 	config.MatchOptions.DefaultExts = []string{"gmi"}
 	config.MatchOptions.IndexFilename = "index.gmi"
+	config.CgiTimeout = 10
 
 	decoder := json.NewDecoder(f)
 	err = decoder.Decode(&config)
