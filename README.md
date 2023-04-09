@@ -3,7 +3,7 @@
 Gemplex is a Gemini server, capable of serving multiple capsules. Apart from
 static content, it also supports serving dynamic content through CGI scripts.
 
-Gemplex is still far from being battle-tested and feture complete. Check the
+Gemplex is still far from being battle-tested and feature complete. Check the
 "Completion Status" section to find out more.
 
 # Completion Status
