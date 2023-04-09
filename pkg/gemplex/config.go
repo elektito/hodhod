@@ -168,7 +168,7 @@ func validateConfig(cfg *Config) (err error) {
 		return fmt.Errorf("Invalid value for 'trailing_slash' option.")
 	}
 
-	for _, route := range cfg.Routes {
+	for i, route := range cfg.Routes {
 		if route.Backend == "" {
 			return fmt.Errorf("Empty backend name in routes.")
 		}
@@ -189,6 +189,10 @@ func validateConfig(cfg *Config) (err error) {
 			fallthrough
 		case route.Hostname != "" && route.Url != "":
 			return fmt.Errorf("Multiple patterns in one route.")
+		}
+
+		if cfg.MatchOptions.TrailingSlash == "ensure" && route.Url != "" && !strings.HasSuffix(route.Url, "/") {
+			return fmt.Errorf("URL route %d will never be matched because it does not have a trailing slash and match_options.trailing_slash is 'ensure'.", i+1)
 		}
 	}
 
