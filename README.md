@@ -11,10 +11,10 @@ this writing. Development is going to start real soon now, hopefully! Check the
 
 The following features are planned for Gemplex.
 
- - [ ] Serve static content
- - [ ] Serve dynamic content through CGI
- - [ ] Serving multiple capsules using SNI
- - [ ] Prefix routes
+ - [x] Serve static content
+ - [x] Serve dynamic content through CGI
+ - [x] Serving multiple capsules using SNI
+ - [x] Prefix routes
  - [ ] URL routes
  - [ ] Write a more complete documentation available on Gemini
  - [ ] Client certificates
