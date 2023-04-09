@@ -1,4 +1,4 @@
-package gemplex
+package hodhod
 
 import (
 	"encoding/json"

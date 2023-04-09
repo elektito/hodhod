@@ -1,4 +1,4 @@
-package gemplex
+package hodhod
 
 import (
 	"context"
@@ -66,7 +66,7 @@ func NewCgiResp(req Request, scriptPath string, cfg *Config) (resp Response) {
 		"GATEWAY_INTERFACE=CGI/1.1",
 		"SERVER_PROTOCOL=GEMINI",
 		"REQUEST_METHOD=",
-		"SERVER_SOFTWARE=gemplex",
+		"SERVER_SOFTWARE=hodhod",
 		fmt.Sprintf("GEMINI_URL=%s", req.Url.String()),
 		fmt.Sprintf("GEMINI_URL_PATH=%s", req.Url.Path),
 		fmt.Sprintf("PATH_INFO=%s", req.Url.Path),

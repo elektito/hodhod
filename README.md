@@ -1,14 +1,14 @@
-# About Gemplex
+# About Hodhod
 
-Gemplex is a Gemini server, capable of serving multiple capsules. Apart from
+Hodhod is a Gemini server, capable of serving multiple capsules. Apart from
 static content, it also supports serving dynamic content through CGI scripts.
 
-Gemplex is still far from being battle-tested and feature complete. Check the
+Hodhod is still far from being battle-tested and feature complete. Check the
 "Completion Status" section to find out more.
 
 # Completion Status
 
-The following features are planned for Gemplex.
+The following features are planned for Hodhod.
 
  - [x] Serve static content
  - [x] Serve dynamic content through CGI
@@ -26,15 +26,15 @@ And maybe later:
  
 # Installation
 
-You can install gemplex by running:
+You can install hodhod by running:
 
 ``` sh
-go install github.com/elektito/gemplex@latest
+go install github.com/elektito/hodhod@latest
 ```
 
 # Config File
 
-Gemplex uses a json formatted configuration file. Here's an example:
+Hodhod uses a json formatted configuration file. Here's an example:
 
 ``` json
 {
@@ -122,7 +122,7 @@ following values are allowed for this field:
    URLs that don't have one, before pattern matching.
  - `remove`: The trailing slash, if present, is always removed from the request
    URL before pattern matching.
- - `ifpresent`: Gemplex will not add or remove trailing slashes. The trailing
+ - `ifpresent`: Hodhod will not add or remove trailing slashes. The trailing
    slash, if present, will be part of the URL when matching for patterns.
 
 ## Backends
@@ -150,7 +150,7 @@ For `cgi` backends, the following fields are available:
 
 ## Certificates
 
-The `certs` key contains a list of certificates to be used by Gemplex. The
+The `certs` key contains a list of certificates to be used by Hodhod. The
 appropriate certificate will be chosen and served based on the request SNI
 value.
 

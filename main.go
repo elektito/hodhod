@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elektito/gemplex/pkg/gemplex"
+	"github.com/elektito/hodhod/pkg/hodhod"
 )
 
 const (
@@ -48,7 +48,7 @@ func fail(whileDoing string, err error) {
 	os.Exit(1)
 }
 
-func getResponseForRequest(req gemplex.Request, cfg *gemplex.Config) (resp gemplex.Response, err error) {
+func getResponseForRequest(req hodhod.Request, cfg *hodhod.Config) (resp hodhod.Response, err error) {
 	backend, unmatched := cfg.GetBackendByUrl(req.Url)
 	if backend == nil {
 		err = errNotFound(req.Url.String(), "no route")
@@ -57,19 +57,19 @@ func getResponseForRequest(req gemplex.Request, cfg *gemplex.Config) (resp gempl
 
 	if backend.Type == "static" {
 		filename := path.Join(backend.Location, unmatched)
-		resp = gemplex.NewFileResp(filename, cfg)
+		resp = hodhod.NewFileResp(filename, cfg)
 		return
 	}
 
 	if backend.Type == "cgi" {
-		resp = gemplex.NewCgiResp(req, backend.Script, cfg)
+		resp = hodhod.NewCgiResp(req, backend.Script, cfg)
 		return
 	}
 
 	return
 }
 
-func handleConn(conn net.Conn, cfg *gemplex.Config) {
+func handleConn(conn net.Conn, cfg *hodhod.Config) {
 	defer conn.Close()
 
 	log.Println("Accepted connection.")
@@ -95,7 +95,7 @@ func handleConn(conn net.Conn, cfg *gemplex.Config) {
 		conn.Write([]byte("59 Bad Request\r\n"))
 		return
 	}
-	req := gemplex.Request{
+	req := hodhod.Request{
 		Url:        urlParsed,
 		RemoteAddr: conn.RemoteAddr().String(),
 	}
@@ -144,7 +144,7 @@ func handleConn(conn net.Conn, cfg *gemplex.Config) {
 	log.Println("Closed connection.")
 }
 
-func loadCertificates(cfg *gemplex.Config) (certs []tls.Certificate, err error) {
+func loadCertificates(cfg *hodhod.Config) (certs []tls.Certificate, err error) {
 	certs = make([]tls.Certificate, len(cfg.Certs))
 	for i, c := range cfg.Certs {
 		certs[i], err = tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
@@ -171,7 +171,7 @@ func main() {
 	configFile := flag.String("config", "config.json", "Path to config file")
 	flag.Parse()
 
-	cfg, err := gemplex.LoadConfig(*configFile)
+	cfg, err := hodhod.LoadConfig(*configFile)
 	if err != nil {
 		fail("loading config", err)
 	}

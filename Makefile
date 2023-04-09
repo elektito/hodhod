@@ -1,4 +1,4 @@
-NAME=gemplex
+NAME=hodhod
 BINDIR ?= .
 SRC != find . -name '*.go' ! -name '*_test.go'
 
