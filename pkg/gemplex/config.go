@@ -99,6 +99,11 @@ func (cfg *Config) GetBackendByUrl(u *url.URL) (backend *Backend, unmatched stri
 		}
 	}
 
+	// Remove default port from the url
+	if u.Port() == "1965" {
+		u.Host = u.Hostname()
+	}
+
 	ustr := u.String()
 
 	for _, route := range cfg.Routes {
