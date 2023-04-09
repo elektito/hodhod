@@ -15,7 +15,7 @@ The following features are planned for Gemplex.
  - [x] Serve dynamic content through CGI
  - [x] Serving multiple capsules using SNI
  - [x] Prefix routes
- - [ ] URL routes
+ - [x] URL routes
  - [ ] Write a more complete documentation available on Gemini
  - [ ] Client certificates
  - [ ] Redirects
