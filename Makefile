@@ -11,6 +11,9 @@ $(BINDIR)/$(NAME): $(SRC)
 
 all: $(NAME)
 
+release: $(NAME)
+	strip $(NAME)
+
 clean:
 	rm -f $(BINDIR)/$(NAME)
 
