@@ -1,4 +1,4 @@
-package config
+package gemplex
 
 import (
 	"encoding/json"
@@ -24,7 +24,7 @@ type Backend struct {
 	Type     string `json:"type"`
 	Location string `json:"location"`
 	FileExt  string `json:"file_ext"`
-	Script   string `json:"cgi"`
+	Script   string `json:"script"`
 }
 
 type Cert struct {
@@ -39,7 +39,7 @@ type MatchOptionsConfig struct {
 	IndexFilename string   `json:"index_filename"`
 }
 
-type GemplexConfig struct {
+type Config struct {
 	ListenAddr   string             `json:"listen"`
 	MatchOptions MatchOptionsConfig `json:"match_options"`
 	Routes       []Route            `json:"routes"`
@@ -47,7 +47,7 @@ type GemplexConfig struct {
 	Certs        []Cert             `json:"certs"`
 }
 
-func Load() (config GemplexConfig, err error) {
+func LoadConfig() (config Config, err error) {
 	f, err := os.Open(ConfigFilePath)
 	if err != nil {
 		return
@@ -72,7 +72,7 @@ func Load() (config GemplexConfig, err error) {
 	return
 }
 
-func (cfg *GemplexConfig) GetBackendByName(name string) *Backend {
+func (cfg *Config) GetBackendByName(name string) *Backend {
 	for _, backend := range cfg.Backends {
 		if backend.Name == name {
 			return &backend
@@ -82,12 +82,7 @@ func (cfg *GemplexConfig) GetBackendByName(name string) *Backend {
 	return nil
 }
 
-func (cfg *GemplexConfig) GetBackendByUrl(urlStr string) (backend *Backend, unmatched string) {
-	u, err := url.Parse(urlStr)
-	if err != nil {
-		return
-	}
-
+func (cfg *Config) GetBackendByUrl(u *url.URL) (backend *Backend, unmatched string) {
 	if cfg.MatchOptions.QueryParams != "include" {
 		u.RawQuery = ""
 	}
@@ -102,6 +97,8 @@ func (cfg *GemplexConfig) GetBackendByUrl(urlStr string) (backend *Backend, unma
 		}
 	}
 
+	ustr := u.String()
+
 	for _, route := range cfg.Routes {
 		switch {
 		case route.Hostname != "" && route.Hostname == u.Hostname():
@@ -112,7 +109,7 @@ func (cfg *GemplexConfig) GetBackendByUrl(urlStr string) (backend *Backend, unma
 			}
 			backend = cfg.GetBackendByName(route.Backend)
 			return
-		case route.Prefix != "" && strings.HasPrefix(u.Path, route.Prefix):
+		case route.Prefix != "" && strings.HasPrefix(ustr, route.Prefix):
 			if len(u.Path) > len(route.Prefix) {
 				unmatched = unmatched[len(route.Prefix):]
 				if unmatched[0] == '/' {
@@ -130,7 +127,7 @@ func (cfg *GemplexConfig) GetBackendByUrl(urlStr string) (backend *Backend, unma
 	return
 }
 
-func setDefaultsAndNormalize(cfg *GemplexConfig) {
+func setDefaultsAndNormalize(cfg *Config) {
 	for i, route := range cfg.Routes {
 		if route.Prefix != "" && !strings.HasPrefix(route.Prefix, "gemini://") {
 			cfg.Routes[i].Prefix = "gemini://" + route.Prefix
@@ -148,7 +145,7 @@ func setDefaultsAndNormalize(cfg *GemplexConfig) {
 	}
 }
 
-func validateConfig(cfg *GemplexConfig) (err error) {
+func validateConfig(cfg *Config) (err error) {
 	switch cfg.MatchOptions.QueryParams {
 	case "include":
 	case "remove":

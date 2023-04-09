@@ -4,17 +4,17 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
+	"net/url"
 	"os"
 	"path"
 	"sync"
 	"time"
 
-	"github.com/elektito/gemplex/pkg/config"
-	"github.com/elektito/gemplex/pkg/response"
+	"github.com/elektito/gemplex/pkg/gemplex"
 )
 
 const (
@@ -24,30 +24,51 @@ const (
 	GeminiMaxRequestSize = 1024
 )
 
-var ErrNotFound = errors.New("No route found for url")
+type ErrNotFound struct {
+	Reason string
+	Url    string
+}
+
+func (e ErrNotFound) Error() string {
+	return fmt.Sprintf("URL %s not found: %s", e.Url, e.Reason)
+}
+
+var _ error = (*ErrNotFound)(nil)
+
+func errNotFound(url string, reason string) ErrNotFound {
+	return ErrNotFound{
+		Url:    url,
+		Reason: reason,
+	}
+}
 
 func fail(whileDoing string, err error) {
 	log.Printf("Error %s: %s\n", whileDoing, err)
 	os.Exit(1)
 }
 
-func getResponseForRequest(req string, cfg *config.GemplexConfig) (resp response.Response, err error) {
-	backend, unmatched := cfg.GetBackendByUrl(req)
+func getResponseForRequest(req gemplex.Request, cfg *gemplex.Config) (resp gemplex.Response, err error) {
+	backend, unmatched := cfg.GetBackendByUrl(req.Url)
 	if backend == nil {
-		err = ErrNotFound
+		err = errNotFound(req.Url.String(), "no route")
 		return
 	}
 
 	if backend.Type == "static" {
 		filename := path.Join(backend.Location, unmatched)
-		resp = response.NewFileResp(filename, cfg)
+		resp = gemplex.NewFileResp(filename, cfg)
+		return
+	}
+
+	if backend.Type == "cgi" {
+		resp = gemplex.NewCgiResp(req, backend.Script, cfg)
 		return
 	}
 
 	return
 }
 
-func handleConn(conn net.Conn, cfg *config.GemplexConfig) {
+func handleConn(conn net.Conn, cfg *gemplex.Config) {
 	defer conn.Close()
 
 	log.Println("Accepted connection.")
@@ -67,7 +88,16 @@ func handleConn(conn net.Conn, cfg *config.GemplexConfig) {
 		return
 	}
 
-	req := s.Text()
+	urlStr := s.Text()
+	urlParsed, err := url.Parse(urlStr)
+	if err != nil {
+		conn.Write([]byte("59 Bad Request\r\n"))
+		return
+	}
+	req := gemplex.Request{
+		Url:        urlParsed,
+		RemoteAddr: conn.RemoteAddr().String(),
+	}
 	resp, err := getResponseForRequest(req, cfg)
 	if err != nil {
 		log.Println("Could not find response for the request:", err)
@@ -78,9 +108,19 @@ func handleConn(conn net.Conn, cfg *config.GemplexConfig) {
 	wg.Add(2)
 
 	go func() {
+		defer resp.Close()
 		resp.WriteStatus(conn)
-		io.Copy(conn, resp)
-		conn.(*tls.Conn).NetConn().(*net.TCPConn).CloseWrite()
+		_, err := io.Copy(conn, resp)
+		if err != nil {
+			log.Println("Error sending response:", err)
+
+			// close the underlying connection (instead of letting the tls
+			// connection to be properly closed) to signal to the client that
+			// there was an error.
+			conn.(*tls.Conn).NetConn().Close()
+		} else {
+			conn.(*tls.Conn).NetConn().(*net.TCPConn).CloseWrite()
+		}
 		wg.Done()
 	}()
 
@@ -93,7 +133,6 @@ func handleConn(conn net.Conn, cfg *config.GemplexConfig) {
 			log.Println("Unexpected input from client.")
 			conn.Close()
 		} else if err != nil && err != io.EOF {
-			log.Println("Error reading from client:", err)
 			conn.Close()
 		}
 
@@ -105,7 +144,7 @@ func handleConn(conn net.Conn, cfg *config.GemplexConfig) {
 	log.Println("Closed connection.")
 }
 
-func loadCertificates(cfg *config.GemplexConfig) (certs []tls.Certificate, err error) {
+func loadCertificates(cfg *gemplex.Config) (certs []tls.Certificate, err error) {
 	certs = make([]tls.Certificate, len(cfg.Certs))
 	for i, c := range cfg.Certs {
 		certs[i], err = tls.LoadX509KeyPair(c.CertFile, c.KeyFile)
@@ -129,7 +168,7 @@ func loadCertificates(cfg *config.GemplexConfig) (certs []tls.Certificate, err e
 }
 
 func main() {
-	cfg, err := config.Load()
+	cfg, err := gemplex.LoadConfig()
 	if err != nil {
 		fail("loading config", err)
 	}
