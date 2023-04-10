@@ -90,6 +90,8 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 	}
 
 	urlStr := s.Text()
+	log.Println("Request:", urlStr)
+
 	urlParsed, err := url.Parse(urlStr)
 	if err != nil {
 		conn.Write([]byte("59 Bad Request\r\n"))
