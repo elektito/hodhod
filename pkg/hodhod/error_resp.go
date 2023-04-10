@@ -23,6 +23,7 @@ func (resp *ErrorResponse) Read(p []byte) (n int, err error) {
 	copy(p, status)
 
 	n = len(status)
+	resp.returnedStatusLine = true
 	return
 }
 
