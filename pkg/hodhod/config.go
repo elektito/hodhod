@@ -35,6 +35,11 @@ type MatchOptionsConfig struct {
 	IndexFilename string   `json:"index_filename"`
 }
 
+type ContentTypeConfig struct {
+	Default string            `json:"default"`
+	ExtMap  map[string]string `json:"ext_map"`
+}
+
 type Config struct {
 	ListenAddr   string             `json:"listen"`
 	MatchOptions MatchOptionsConfig `json:"match_options"`
@@ -42,6 +47,7 @@ type Config struct {
 	Routes       []Route            `json:"routes"`
 	Backends     []Backend          `json:"backends"`
 	Certs        []Cert             `json:"certs"`
+	ContentType  ContentTypeConfig  `json:"content_type"`
 }
 
 func LoadConfig(configFilePath string) (config Config, err error) {
@@ -58,6 +64,25 @@ func LoadConfig(configFilePath string) (config Config, err error) {
 	config.MatchOptions.DefaultExts = []string{"gmi"}
 	config.MatchOptions.IndexFilename = "index.gmi"
 	config.CgiTimeout = 10
+	config.ContentType.Default = "text/gemini"
+	config.ContentType.ExtMap = map[string]string{
+		"aac":  "audio/aac",
+		"csv":  "text/csv",
+		"gif":  "image/gif",
+		"htm":  "text/html",
+		"html": "text/html",
+		"jpeg": "image/jpeg",
+		"jpg":  "image/jpeg",
+		"md":   "text/markdown",
+		"mkv":  "video/x-matroska",
+		"mp3":  "audio/mpeg",
+		"mp4":  "video/mp4",
+		"oga":  "audio/ogg",
+		"ogv":  "video/ogg",
+		"png":  "image/png",
+		"txt":  "text/plain",
+		"wav":  "audio/wav",
+	}
 
 	decoder := json.NewDecoder(f)
 	err = decoder.Decode(&config)

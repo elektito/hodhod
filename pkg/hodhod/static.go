@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 )
 
 type StaticResponse struct {
@@ -48,6 +49,7 @@ func NewFileResp(filename string, cfg *Config) (resp Response) {
 		for _, ext := range cfg.MatchOptions.DefaultExts {
 			f, err = os.Open(filename + "." + ext)
 			if err == nil {
+				filename = filename + "." + ext
 				break
 			}
 		}
@@ -61,9 +63,19 @@ func NewFileResp(filename string, cfg *Config) (resp Response) {
 		return
 	}
 
+	ext := filepath.Ext(filename)
+	if ext != "" {
+		// remove leading dot
+		ext = ext[1:]
+	}
+	contentType, ok := cfg.ContentType.ExtMap[ext]
+	if !ok {
+		contentType = cfg.ContentType.Default
+	}
+
 	resp = &StaticResponse{
 		file:        f,
-		contentType: "text/gemini", // TODO find a way of detecting content type
+		contentType: contentType,
 	}
 	return
 }
