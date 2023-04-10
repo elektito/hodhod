@@ -95,6 +95,13 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 		conn.Write([]byte("59 Bad Request\r\n"))
 		return
 	}
+
+	tlsConn := conn.(*tls.Conn)
+	if tlsConn.ConnectionState().ServerName != urlParsed.Hostname() {
+		conn.Write([]byte("53 URL hostname does not match SNI\r\n"))
+		return
+	}
+
 	req := hodhod.Request{
 		Url:        urlParsed,
 		RemoteAddr: conn.RemoteAddr().String(),
