@@ -105,7 +105,7 @@ func (cfg *Config) GetBackendByName(name string) *Backend {
 	return nil
 }
 
-func (cfg *Config) GetBackendByUrl(u *url.URL) (backend *Backend, unmatched string) {
+func (cfg *Config) GetBackendByUrl(u url.URL) (backend *Backend, unmatched string) {
 	if cfg.MatchOptions.QueryParams != "include" {
 		u.RawQuery = ""
 	}
