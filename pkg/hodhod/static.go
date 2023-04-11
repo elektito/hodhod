@@ -13,6 +13,10 @@ type StaticResponse struct {
 	returnedStatusLine bool
 }
 
+func (resp *StaticResponse) Init(req *Request) (err error) {
+	return
+}
+
 func (resp *StaticResponse) Read(p []byte) (n int, err error) {
 	if !resp.returnedStatusLine {
 		status := []byte(fmt.Sprintf("20 %s\r\n", resp.contentType))

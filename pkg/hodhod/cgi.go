@@ -11,7 +11,9 @@ import (
 
 type CgiResponse struct {
 	cmd          *exec.Cmd
+	stdin        io.WriteCloser
 	stdout       io.Reader
+	stderr       io.Reader
 	cancelScript func()
 }
 
@@ -33,6 +35,14 @@ func cgiError(exitCode int) CgiError {
 	}
 }
 
+func (resp CgiResponse) Init(req *Request) (err error) {
+	reqLine := []byte(req.Url.String())
+	reqLine = append(reqLine, '\r', '\n')
+	_, err = resp.stdin.Write(reqLine)
+	resp.stdin.Close()
+	return
+}
+
 func (resp CgiResponse) Read(p []byte) (n int, err error) {
 	if resp.cmd.ProcessState != nil {
 		if resp.cmd.ProcessState.ExitCode() != 0 {
@@ -44,7 +54,8 @@ func (resp CgiResponse) Read(p []byte) (n int, err error) {
 		return
 	}
 
-	return resp.stdout.Read(p)
+	n, err = resp.stdout.Read(p)
+	return
 }
 
 func (resp CgiResponse) Close() {
@@ -57,10 +68,9 @@ func NewCgiResp(req Request, scriptPath string, cfg *Config) (resp Response) {
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Duration(cfg.CgiTimeout)*time.Second)
 	cmd := exec.CommandContext(ctx, scriptPath)
 
-	// create a pipe to connect to the script's stdout; we set the writer as the
-	// script's stdout writer (where its output is written to), and keep the
-	// reader side so we can read from and send the response to the client.
-	r, w := io.Pipe()
+	rStdin, wStdin := io.Pipe()
+	rStdout, wStdout := io.Pipe()
+	rStderr, wStderr := io.Pipe()
 
 	cmd.Env = []string{
 		"GATEWAY_INTERFACE=CGI/1.1",
@@ -76,7 +86,9 @@ func NewCgiResp(req Request, scriptPath string, cfg *Config) (resp Response) {
 		fmt.Sprintf("REMOTE_ADDR=%s", req.RemoteAddr),
 		fmt.Sprintf("REMOTE_HOST=%s", req.RemoteAddr),
 	}
-	cmd.Stdout = w
+	cmd.Stdin = rStdin
+	cmd.Stdout = wStdout
+	cmd.Stderr = wStderr
 	cmd.WaitDelay = 5 * time.Second
 
 	err := cmd.Start()
@@ -92,18 +104,41 @@ func NewCgiResp(req Request, scriptPath string, cfg *Config) (resp Response) {
 	}
 
 	go func() {
+		// This function can be useful for debugging CGI scripts. We can read
+		// the stderr here and log it.
+		//
+		// TODO: We could have an option to log these (maybe to a separate file,
+		// and/or when there was a CGI error)
+		//
+		// stderr, err := io.ReadAll(rStderr)
+		// if err == nil {
+		//    log.Println("CGI stderr:", string(stderr))
+		// } else {
+		// 	  log.Println("Error reading CGI stderr:", err)
+		// }
+
+		io.Copy(io.Discard, rStderr)
+	}()
+
+	go func() {
 		err := cmd.Wait()
 		if err != nil {
-			log.Println("CGI script timeout:", scriptPath)
-			w.CloseWithError(fmt.Errorf("CGI timeout"))
+			log.Printf("CGI script (%s) timeout (error: %s)\n", scriptPath, err)
+			rStdin.CloseWithError(fmt.Errorf("CGI timeout"))
+			wStdout.CloseWithError(fmt.Errorf("CGI timeout"))
+			wStderr.CloseWithError(fmt.Errorf("CGI timeout"))
 		} else {
-			w.Close()
+			rStdin.Close()
+			wStdout.Close()
+			wStderr.Close()
 		}
 	}()
 
 	resp = CgiResponse{
 		cmd:          cmd,
-		stdout:       r,
+		stdin:        wStdin,
+		stdout:       rStdout,
+		stderr:       rStderr,
 		cancelScript: cancelFunc,
 	}
 	return

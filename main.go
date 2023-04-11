@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -34,6 +35,11 @@ func (e ErrNotFound) Error() string {
 	return fmt.Sprintf("URL %s not found: %s", e.Url, e.Reason)
 }
 
+func (e ErrNotFound) Is(err error) bool {
+	_, ok := err.(ErrNotFound)
+	return ok
+}
+
 var _ error = (*ErrNotFound)(nil)
 
 func errNotFound(url string, reason string) ErrNotFound {
@@ -49,7 +55,7 @@ func fail(whileDoing string, err error) {
 }
 
 func getResponseForRequest(req hodhod.Request, cfg *hodhod.Config) (resp hodhod.Response, err error) {
-	backend, unmatched := cfg.GetBackendByUrl(req.Url)
+	backend, unmatched := cfg.GetBackendByUrl(*req.Url)
 	if backend == nil {
 		err = errNotFound(req.Url.String(), "no route")
 		return
@@ -109,8 +115,17 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 		RemoteAddr: conn.RemoteAddr().String(),
 	}
 	resp, err := getResponseForRequest(req, cfg)
-	if err != nil {
+	if errors.Is(err, ErrNotFound{}) {
+		conn.Write([]byte("51 Not Found\r\n"))
+		return
+	} else if err != nil {
 		log.Println("Could not find response for the request:", err)
+		return
+	}
+
+	err = resp.Init(&req)
+	if err != nil {
+		conn.Write([]byte("40 Internal error\r\n"))
 		return
 	}
 

@@ -11,6 +11,10 @@ type ErrorResponse struct {
 	returnedStatusLine bool
 }
 
+func (resp *ErrorResponse) Init(req *Request) (err error) {
+	return
+}
+
 func (resp *ErrorResponse) Read(p []byte) (n int, err error) {
 	if resp.returnedStatusLine {
 		return 0, io.EOF
