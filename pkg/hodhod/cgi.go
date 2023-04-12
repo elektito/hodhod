@@ -35,7 +35,11 @@ func cgiError(exitCode int) CgiError {
 	}
 }
 
-func (resp CgiResponse) Init(req *Request) (err error) {
+func (resp *CgiResponse) Backend() string {
+	return "cgi"
+}
+
+func (resp *CgiResponse) Init(req *Request) (err error) {
 	reqLine := []byte(req.Url.String())
 	reqLine = append(reqLine, '\r', '\n')
 	_, err = resp.stdin.Write(reqLine)
@@ -43,7 +47,7 @@ func (resp CgiResponse) Init(req *Request) (err error) {
 	return
 }
 
-func (resp CgiResponse) Read(p []byte) (n int, err error) {
+func (resp *CgiResponse) Read(p []byte) (n int, err error) {
 	if resp.cmd.ProcessState != nil {
 		if resp.cmd.ProcessState.ExitCode() != 0 {
 			err = cgiError(resp.cmd.ProcessState.ExitCode())
@@ -58,7 +62,7 @@ func (resp CgiResponse) Read(p []byte) (n int, err error) {
 	return
 }
 
-func (resp CgiResponse) Close() {
+func (resp *CgiResponse) Close() {
 	if resp.cmd.ProcessState == nil {
 		resp.cancelScript()
 	}
@@ -134,7 +138,7 @@ func NewCgiResp(req Request, scriptPath string, cfg *Config) (resp Response) {
 		}
 	}()
 
-	resp = CgiResponse{
+	resp = &CgiResponse{
 		cmd:          cmd,
 		stdin:        wStdin,
 		stdout:       rStdout,

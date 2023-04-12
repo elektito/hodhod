@@ -11,6 +11,10 @@ type ErrorResponse struct {
 	returnedStatusLine bool
 }
 
+func (resp *ErrorResponse) Backend() string {
+	return "error"
+}
+
 func (resp *ErrorResponse) Init(req *Request) (err error) {
 	return
 }

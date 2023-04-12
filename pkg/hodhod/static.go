@@ -13,6 +13,10 @@ type StaticResponse struct {
 	returnedStatusLine bool
 }
 
+func (resp *StaticResponse) Backend() string {
+	return "static"
+}
+
 func (resp *StaticResponse) Init(req *Request) (err error) {
 	return
 }

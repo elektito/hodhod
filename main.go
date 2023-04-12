@@ -78,8 +78,6 @@ func getResponseForRequest(req hodhod.Request, cfg *hodhod.Config) (resp hodhod.
 func handleConn(conn net.Conn, cfg *hodhod.Config) {
 	defer conn.Close()
 
-	log.Println("Accepted connection.")
-
 	err := conn.SetDeadline(time.Now().Add(ConnectionTimeout))
 	if err != nil {
 		log.Println("Error setting connection deadline:", err)
@@ -96,16 +94,17 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 	}
 
 	urlStr := s.Text()
-	log.Println("Request:", urlStr)
 
 	urlParsed, err := url.Parse(urlStr)
 	if err != nil {
+		log.Printf("Request: remote=%s resp=59 url=%s\n", conn.RemoteAddr().String(), urlStr)
 		conn.Write([]byte("59 Bad Request\r\n"))
 		return
 	}
 
 	tlsConn := conn.(*tls.Conn)
 	if tlsConn.ConnectionState().ServerName != urlParsed.Hostname() {
+		log.Printf("Request: remote=%s resp=53 url=%s\n", conn.RemoteAddr().String(), urlStr)
 		conn.Write([]byte("53 URL hostname does not match SNI\r\n"))
 		return
 	}
@@ -116,6 +115,7 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 	}
 	resp, err := getResponseForRequest(req, cfg)
 	if errors.Is(err, ErrNotFound{}) {
+		log.Printf("Request: remote=%s backend=none resp=51 url=%s\n", conn.RemoteAddr().String(), urlStr)
 		conn.Write([]byte("51 Not Found\r\n"))
 		return
 	} else if err != nil {
@@ -123,8 +123,11 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 		return
 	}
 
+	log.Printf("Request: remote=%s backend=%s url=%s\n", conn.RemoteAddr().String(), resp.Backend(), urlStr)
+
 	err = resp.Init(&req)
 	if err != nil {
+		log.Printf("Request: remote=%s resp=40 url=%s\n", conn.RemoteAddr().String(), urlStr)
 		conn.Write([]byte("40 Internal error\r\n"))
 		return
 	}
@@ -164,8 +167,6 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 	}()
 
 	wg.Wait()
-
-	log.Println("Closed connection.")
 }
 
 func loadCertificates(cfg *hodhod.Config) (certs []tls.Certificate, err error) {

@@ -14,6 +14,9 @@ type Response interface {
 
 	// Release any resources related to this response
 	Close()
+
+	// Returns the backend name for this response
+	Backend() string
 }
 
 var _ io.Reader = Response(nil)
