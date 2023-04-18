@@ -105,6 +105,9 @@ func getResponseForRequest(req hodhod.Request, cfg *hodhod.Config) (resp hodhod.
 func handleConn(conn net.Conn, cfg *hodhod.Config) {
 	defer conn.Close()
 
+	tlsConn := conn.(*tls.Conn)
+	sni := tlsConn.ConnectionState().ServerName
+
 	err := conn.SetDeadline(time.Now().Add(ConnectionTimeout))
 	if err != nil {
 		log.Println("Error setting connection deadline:", err)
@@ -121,17 +124,15 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 	}
 
 	urlStr := s.Text()
-
 	urlParsed, err := url.Parse(urlStr)
 	if err != nil {
-		log.Printf("Request: remote=%s resp=59 url=%s\n", conn.RemoteAddr().String(), urlStr)
+		log.Printf("Request: remote=%s sni=%s resp=59 url=%s\n", conn.RemoteAddr().String(), sni, urlStr)
 		conn.Write([]byte("59 Bad Request\r\n"))
 		return
 	}
 
-	tlsConn := conn.(*tls.Conn)
-	if tlsConn.ConnectionState().ServerName != urlParsed.Hostname() {
-		log.Printf("Request: remote=%s resp=53 url=%s\n", conn.RemoteAddr().String(), urlStr)
+	if sni != urlParsed.Hostname() {
+		log.Printf("Request: remote=%s sni=%s resp=53 url=%s\n", conn.RemoteAddr().String(), sni, urlStr)
 		conn.Write([]byte("53 URL hostname does not match SNI\r\n"))
 		return
 	}
@@ -142,11 +143,11 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 	}
 	resp, err := getResponseForRequest(req, cfg)
 	if errors.Is(err, ErrNotFound{}) {
-		log.Printf("Request: remote=%s backend=none sni=%s resp=51 url=%s %s\n", conn.RemoteAddr().String(), tlsConn.ConnectionState().ServerName, urlStr, err)
+		log.Printf("Request: remote=%s backend=none sni=%s resp=51 url=%s %s\n", conn.RemoteAddr().String(), sni, urlStr, err)
 		conn.Write([]byte("51 Not Found\r\n"))
 		return
 	} else if errors.Is(err, ErrInvalidUrl{}) {
-		log.Printf("Request: remote=%s backend=none sni=%s resp=59 url=%s %s\n", conn.RemoteAddr().String(), tlsConn.ConnectionState().ServerName, urlStr, err)
+		log.Printf("Request: remote=%s backend=none sni=%s resp=59 url=%s %s\n", conn.RemoteAddr().String(), sni, urlStr, err)
 		conn.Write([]byte("59 Bad Request\r\n"))
 		return
 	} else if err != nil {
