@@ -31,6 +31,11 @@ type ErrNotFound struct {
 	Url    string
 }
 
+type ErrInvalidUrl struct {
+	Reason string
+	Url    string
+}
+
 func (e ErrNotFound) Error() string {
 	return fmt.Sprintf("URL %s not found: %s", e.Url, e.Reason)
 }
@@ -40,10 +45,27 @@ func (e ErrNotFound) Is(err error) bool {
 	return ok
 }
 
+func (e ErrInvalidUrl) Error() string {
+	return fmt.Sprintf("URL %s is not valid: %s", e.Url, e.Reason)
+}
+
+func (e ErrInvalidUrl) Is(err error) bool {
+	_, ok := err.(ErrInvalidUrl)
+	return ok
+}
+
 var _ error = (*ErrNotFound)(nil)
+var _ error = (*ErrInvalidUrl)(nil)
 
 func errNotFound(url string, reason string) ErrNotFound {
 	return ErrNotFound{
+		Url:    url,
+		Reason: reason,
+	}
+}
+
+func errInvalidUrl(url string, reason string) ErrInvalidUrl {
+	return ErrInvalidUrl{
 		Url:    url,
 		Reason: reason,
 	}
@@ -55,6 +77,11 @@ func fail(whileDoing string, err error) {
 }
 
 func getResponseForRequest(req hodhod.Request, cfg *hodhod.Config) (resp hodhod.Response, err error) {
+	if req.Url.Scheme != "gemini" {
+		err = errInvalidUrl(req.Url.String(), fmt.Sprintf("Invalid URL scheme (%s)", req.Url.Scheme))
+		return
+	}
+
 	backend, unmatched := cfg.GetBackendByUrl(*req.Url)
 	if backend == nil {
 		err = errNotFound(req.Url.String(), "no route")
@@ -115,8 +142,12 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 	}
 	resp, err := getResponseForRequest(req, cfg)
 	if errors.Is(err, ErrNotFound{}) {
-		log.Printf("Request: remote=%s backend=none resp=51 url=%s\n", conn.RemoteAddr().String(), urlStr)
+		log.Printf("Request: remote=%s backend=none sni=%s resp=51 url=%s %s\n", conn.RemoteAddr().String(), tlsConn.ConnectionState().ServerName, urlStr, err)
 		conn.Write([]byte("51 Not Found\r\n"))
+		return
+	} else if errors.Is(err, ErrInvalidUrl{}) {
+		log.Printf("Request: remote=%s backend=none sni=%s resp=59 url=%s %s\n", conn.RemoteAddr().String(), tlsConn.ConnectionState().ServerName, urlStr, err)
+		conn.Write([]byte("59 Bad Request\r\n"))
 		return
 	} else if err != nil {
 		log.Println("Could not find response for the request:", err)
