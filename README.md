@@ -29,7 +29,7 @@ And maybe later:
 You can install hodhod by running:
 
 ``` sh
-go install github.com/elektito/hodhod@latest
+go install git.sr.ht/~elektito/hodhod@latest
 ```
 
 # Config File

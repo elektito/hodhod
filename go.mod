@@ -1,3 +1,3 @@
-module github.com/elektito/hodhod
+module git.sr.ht/~elektito/hodhod
 
 go 1.20

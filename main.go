@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elektito/hodhod/pkg/hodhod"
+	"git.sr.ht/~elektito/hodhod/pkg/hodhod"
 )
 
 const (
