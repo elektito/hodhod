@@ -139,7 +139,7 @@ func (cfg *Config) GetBackendByUrl(u url.URL) (backend *Backend, unmatched strin
 			return
 		case route.Prefix != "" && strings.HasPrefix(ustr, route.Prefix):
 			if len(u.Path) > len(route.Prefix) {
-				unmatched = unmatched[len(route.Prefix):]
+				unmatched = u.Path[len(route.Prefix):]
 				if unmatched[0] == '/' {
 					unmatched = unmatched[1:]
 				}
