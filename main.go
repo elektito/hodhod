@@ -106,7 +106,6 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 	defer conn.Close()
 
 	tlsConn := conn.(*tls.Conn)
-	sni := tlsConn.ConnectionState().ServerName
 
 	err := conn.SetDeadline(time.Now().Add(ConnectionTimeout))
 	if err != nil {
@@ -122,6 +121,8 @@ func handleConn(conn net.Conn, cfg *hodhod.Config) {
 		log.Println("Could not read request:", s.Err())
 		return
 	}
+
+	sni := tlsConn.ConnectionState().ServerName
 
 	urlStr := s.Text()
 	urlParsed, err := url.Parse(urlStr)
