@@ -90,7 +90,7 @@ func getResponseForRequest(req hodhod.Request, cfg *hodhod.Config) (resp hodhod.
 
 	if backend.Type == "static" {
 		filename := path.Join(backend.Location, unmatched)
-		resp = hodhod.NewFileResp(filename, cfg)
+		resp = hodhod.NewFileResp(filename, req, cfg)
 		return
 	}
 

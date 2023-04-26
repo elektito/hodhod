@@ -42,12 +42,14 @@ func (resp *StaticResponse) Close() {
 	}
 }
 
-func NewFileResp(filename string, cfg *Config) (resp Response) {
+func NewFileResp(filename string, req Request, cfg *Config) (resp Response) {
+	isDir := false
 	f, err := os.Open(filename)
 
 	if err == nil {
 		info, serr := f.Stat()
 		if serr == nil && info.IsDir() {
+			isDir = true
 			filename = path.Join(filename, cfg.MatchOptions.IndexFilename)
 			f, err = os.Open(filename)
 		}
@@ -69,6 +71,15 @@ func NewFileResp(filename string, cfg *Config) (resp Response) {
 			Meta:       "Not Found",
 		}
 		return
+	}
+
+	u := *req.Url
+	if isDir && u.Path[len(u.Path)-1] != '/' {
+		u.Path = u.Path + "/"
+		return NewPermRedirectResp(u.String())
+	} else if !isDir && u.Path[len(u.Path)-1] == '/' {
+		u.Path = u.Path[:len(u.Path)-1]
+		return NewPermRedirectResp(u.String())
 	}
 
 	ext := filepath.Ext(filename)
