@@ -26,6 +26,8 @@ const (
 	GeminiMaxRequestSize = 1024
 )
 
+var Version = "unknown"
+
 type ErrNotFound struct {
 	Reason string
 	Url    string
@@ -227,7 +229,13 @@ func loadCertificates(cfg *hodhod.Config) (certs []tls.Certificate, err error) {
 
 func main() {
 	configFile := flag.String("config", "config.json", "Path to config file")
+	showVersion := flag.Bool("version", false, "Print hodhod version")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("Hodhod version:", Version)
+		os.Exit(0)
+	}
 
 	cfg, err := hodhod.LoadConfig(*configFile)
 	if err != nil {
